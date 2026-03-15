@@ -91,73 +91,128 @@ echo PHP_EOL;
 // --- 3. 継承 ---
 echo "=== 3. 継承 ===" . PHP_EOL;
 
-// 親クラス
-class Shape
-{
-    public string $color;
+// ポイント: 共通の処理を親クラスにまとめて、子クラスで違いだけを書く
 
-    public function __construct(string $color)
+// 親クラス: すべての従業員に共通する部分
+class Employee
+{
+    public function __construct(
+        protected string $name,     // protected: 子クラスからもアクセス可能
+        protected int $baseSalary,
+    ) {}
+
+    // 給与計算（子クラスで上書きできる）
+    public function calculateSalary(): int
     {
-        $this->color = $color;
+        return $this->baseSalary;
     }
 
-    public function describe(): string
+    // 自己紹介
+    public function introduce(): string
     {
-        return $this->color . "の図形";
+        return $this->name . " - 月給: " . number_format($this->calculateSalary()) . "円";
     }
 }
 
-// 子クラス（Shapeを継承）
-class Circle extends Shape
+// 子クラス1: エンジニア（残業代がつく）
+class Engineer extends Employee
 {
-    public float $radius;
+    private int $overtimeHours;
+    private int $overtimeRate;
 
-    public function __construct(string $color, float $radius)
+    public function __construct(string $name, int $baseSalary, int $overtimeHours, int $overtimeRate = 2000)
     {
-        parent::__construct($color);  // 親のコンストラクタを呼ぶ
-        $this->radius = $radius;
+        parent::__construct($name, $baseSalary);  // 親のコンストラクタを呼ぶ
+        $this->overtimeHours = $overtimeHours;
+        $this->overtimeRate = $overtimeRate;
     }
 
-    public function area(): float
+    // 親メソッドをオーバーライド（上書き）して残業代を加算
+    public function calculateSalary(): int
     {
-        return M_PI * $this->radius ** 2;
+        return $this->baseSalary + ($this->overtimeHours * $this->overtimeRate);
     }
 
-    // 親メソッドのオーバーライド（上書き）
-    public function describe(): string
+    public function introduce(): string
     {
-        return $this->color . "の円（半径" . $this->radius . "）";
+        return "[エンジニア] " . parent::introduce()
+            . "（残業" . $this->overtimeHours . "h）";
     }
 }
 
-class Rectangle extends Shape
+// 子クラス2: 営業（成果報酬がつく）
+class SalesStaff extends Employee
 {
-    public float $width;
-    public float $height;
+    private int $salesAmount;
+    private float $commissionRate;
 
-    public function __construct(string $color, float $width, float $height)
+    public function __construct(string $name, int $baseSalary, int $salesAmount, float $commissionRate = 0.05)
     {
-        parent::__construct($color);
-        $this->width = $width;
-        $this->height = $height;
+        parent::__construct($name, $baseSalary);
+        $this->salesAmount = $salesAmount;
+        $this->commissionRate = $commissionRate;
     }
 
-    public function area(): float
+    // 売上に応じたインセンティブを加算
+    public function calculateSalary(): int
     {
-        return $this->width * $this->height;
+        return $this->baseSalary + (int)($this->salesAmount * $this->commissionRate);
     }
 
-    public function describe(): string
+    public function introduce(): string
     {
-        return $this->color . "の長方形（" . $this->width . "x" . $this->height . "）";
+        return "[営業] " . parent::introduce()
+            . "（売上" . number_format($this->salesAmount) . "円）";
     }
 }
 
-$circle = new Circle("赤", 5.0);
-$rect = new Rectangle("青", 4.0, 3.0);
+// 子クラス3: マネージャー（役職手当がつく）
+class Manager extends Employee
+{
+    private int $teamSize;
+    private int $allowancePerMember;
 
-echo $circle->describe() . " → 面積: " . round($circle->area(), 2) . PHP_EOL;
-echo $rect->describe() . " → 面積: " . $rect->area() . PHP_EOL;
+    public function __construct(string $name, int $baseSalary, int $teamSize, int $allowancePerMember = 10000)
+    {
+        parent::__construct($name, $baseSalary);
+        $this->teamSize = $teamSize;
+        $this->allowancePerMember = $allowancePerMember;
+    }
+
+    public function calculateSalary(): int
+    {
+        return $this->baseSalary + ($this->teamSize * $this->allowancePerMember);
+    }
+
+    public function introduce(): string
+    {
+        return "[マネージャー] " . parent::introduce()
+            . "（部下" . $this->teamSize . "人）";
+    }
+}
+
+// --- 使ってみる ---
+
+// 異なる職種の従業員を作成
+$employees = [
+    new Engineer("田中", 300000, 20),            // 残業20時間
+    new SalesStaff("佐藤", 280000, 5000000),     // 売上500万
+    new Manager("鈴木", 400000, 8),              // 部下8人
+    new Employee("山本", 250000),                 // 一般社員（手当なし）
+];
+
+// 全員同じ introduce() で表示できる（ポリモーフィズム）
+echo "--- 従業員一覧 ---" . PHP_EOL;
+foreach ($employees as $employee) {
+    echo "  " . $employee->introduce() . PHP_EOL;
+}
+
+// 合計給与の計算も簡単
+$totalSalary = 0;
+foreach ($employees as $employee) {
+    $totalSalary += $employee->calculateSalary();
+}
+echo "--- 給与合計: " . number_format($totalSalary) . "円 ---" . PHP_EOL;
 echo PHP_EOL;
 
 // --- 4. インターフェース ---
